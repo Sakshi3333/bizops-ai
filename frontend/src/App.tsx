@@ -1,24 +1,33 @@
-import { useEffect, useState } from 'react'
-import './App.css'
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./auth/AuthContext";
+import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import "./App.css";
 
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-
-function App() {
-  const [health, setHealth] = useState<string>('loading...')
-
-  useEffect(() => {
-    fetch(`${API_URL}/health`)
-      .then((res) => res.json())
-      .then((data) => setHealth(JSON.stringify(data)))
-      .catch((err) => setHealth(`error: ${err.message}`))
-  }, [])
-
-  return (
-    <>
-      <h1>BizOps AI</h1>
-      <p>Backend health check: {health}</p>
-    </>
-  )
+function HomeRedirect() {
+  const { isAuthenticated } = useAuth();
+  return <Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />;
 }
 
-export default App
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<HomeRedirect />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default App;
