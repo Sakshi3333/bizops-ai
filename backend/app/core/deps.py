@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import decode_access_token
-from app.core.tenant import set_tenant_context
 from app.models.user import User, UserRole
 
 bearer_scheme = HTTPBearer()
@@ -35,9 +34,9 @@ def get_current_user(
     if user_id is None or company_id is None or role is None:
         raise credentials_error
 
-    is_superadmin = role == UserRole.SUPERADMIN.value
-    set_tenant_context(uuid.UUID(company_id), is_superadmin=is_superadmin)
-
+    # Tenant context is set by TenantContextMiddleware (app/core/tenant.py),
+    # not here - see that middleware's docstring for why it has to live
+    # there rather than in this (threadpool-run) dependency.
     user = db.scalar(select(User).where(User.id == uuid.UUID(user_id)))
     if user is None or not user.is_active:
         raise credentials_error

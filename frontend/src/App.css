@@ -1,16 +1,54 @@
-.auth-page,
-.dashboard-page {
+.auth-page {
   max-width: 400px;
   margin: 48px auto;
   text-align: left;
   padding: 0 20px;
 }
 
+.dashboard-page,
+.customers-page {
+  max-width: 800px;
+  margin: 32px auto;
+  text-align: left;
+  padding: 0 20px;
+}
+
 .auth-page h1,
-.dashboard-page h1 {
+.dashboard-page h1,
+.customers-page h1 {
   font-size: 28px;
   line-height: 1.3;
   margin: 0 0 24px;
+}
+
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-nav a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.app-nav a.active {
+  color: var(--text-h);
+  font-weight: 600;
+}
+
+.app-nav button {
+  margin-left: auto;
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  cursor: pointer;
 }
 
 .auth-page form {
@@ -72,4 +110,87 @@
 
 .dashboard-page dd {
   margin: 0;
+}
+
+.customers-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.customers-header h1 {
+  margin: 0;
+}
+
+.customer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.customer-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--text-h);
+}
+
+.customer-form input {
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text-h);
+}
+
+.customer-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.customers-table,
+.customer-form-actions button,
+.app-nav button {
+  font: inherit;
+}
+
+.customers-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.customers-table th,
+.customers-table td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.customers-actions {
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.customers-page button {
+  font: inherit;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--code-bg);
+  color: var(--text-h);
+  cursor: pointer;
+}
+
+.customers-page button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }

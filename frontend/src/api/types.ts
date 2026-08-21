@@ -29,3 +29,31 @@ export interface UserOut {
   role: UserRole;
   is_active: boolean;
 }
+
+// Mirrors backend/app/schemas/customer.py exactly.
+
+export interface CreateCustomer {
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+}
+
+export interface UpdateCustomer {
+  name?: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  is_active?: boolean;
+}
+
+export interface CustomerOut {
+  id: string;
+  company_id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  is_active: boolean;
+  created_at: string;
+}
