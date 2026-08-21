@@ -5,6 +5,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CustomersPage } from "./pages/CustomersPage";
+import { ProductsPage } from "./pages/ProductsPage";
 import "./App.css";
 
 function HomeRedirect() {
@@ -31,6 +32,14 @@ function App() {
         element={
           <ProtectedRoute>
             <CustomersPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/products"
+        element={
+          <ProtectedRoute>
+            <ProductsPage />
           </ProtectedRoute>
         }
       />

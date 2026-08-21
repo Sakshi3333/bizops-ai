@@ -14,6 +14,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <NavLink to="/customers" className={({ isActive }) => (isActive ? "active" : undefined)}>
           Customers
         </NavLink>
+        <NavLink to="/products" className={({ isActive }) => (isActive ? "active" : undefined)}>
+          Products
+        </NavLink>
         <button onClick={logout}>Log out</button>
       </nav>
       <main>{children}</main>

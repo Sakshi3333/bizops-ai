@@ -57,3 +57,38 @@ export interface CustomerOut {
   is_active: boolean;
   created_at: string;
 }
+
+// Mirrors backend/app/schemas/product.py exactly.
+// unit_price is a Decimal, which FastAPI/Pydantic serializes as a string.
+
+export interface CreateProduct {
+  sku: string;
+  name: string;
+  description?: string | null;
+  unit_price: string;
+  stock_quantity?: number;
+  reorder_level?: number;
+}
+
+export interface UpdateProduct {
+  sku?: string;
+  name?: string;
+  description?: string | null;
+  unit_price?: string;
+  stock_quantity?: number;
+  reorder_level?: number;
+  is_active?: boolean;
+}
+
+export interface ProductOut {
+  id: string;
+  company_id: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  unit_price: string;
+  stock_quantity: number;
+  reorder_level: number;
+  is_active: boolean;
+  created_at: string;
+}

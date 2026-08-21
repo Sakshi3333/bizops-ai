@@ -9,6 +9,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.core.security import decode_access_token
 from app.models.company import Company
 from app.models.customer import Customer
+from app.models.product import Product
 from app.models.user import User, UserRole
 
 # None => unfiltered (no request in flight, e.g. a startup/admin script).
@@ -110,6 +111,11 @@ def _apply_tenant_filter(execute_state):
         ),
         with_loader_criteria(
             Customer,
+            lambda cls: cls.company_id == tenant_id,
+            include_aliases=True,
+        ),
+        with_loader_criteria(
+            Product,
             lambda cls: cls.company_id == tenant_id,
             include_aliases=True,
         ),
