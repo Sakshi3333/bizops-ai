@@ -161,3 +161,42 @@ export const INVOICE_VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> =
   PAID: [],
   CANCELLED: [],
 };
+
+// Mirrors backend/app/schemas/dashboard.py exactly.
+// Decimal fields are serialized as strings.
+
+export interface MonthlyRevenue {
+  month: string; // "YYYY-MM"
+  paid_amount: string;
+  invoiced_amount: string;
+}
+
+export interface StatusCount {
+  status: InvoiceStatus;
+  count: number;
+}
+
+export interface TopCustomer {
+  customer_id: string;
+  name: string;
+  total_billed: string;
+}
+
+export interface LowStockProduct {
+  product_id: string;
+  sku: string;
+  name: string;
+  stock_quantity: number;
+  reorder_level: number;
+}
+
+export interface DashboardSummary {
+  revenue_this_month: string;
+  revenue_last_month: string;
+  outstanding_total: string;
+  overdue_total: string;
+  monthly_trend: MonthlyRevenue[];
+  status_counts: StatusCount[];
+  top_customers: TopCustomer[];
+  low_stock_products: LowStockProduct[];
+}
