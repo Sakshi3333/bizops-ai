@@ -200,3 +200,19 @@ export interface DashboardSummary {
   top_customers: TopCustomer[];
   low_stock_products: LowStockProduct[];
 }
+
+// Mirrors backend/app/schemas/assistant.py exactly.
+
+export interface AskRequest {
+  question: string;
+}
+
+export interface ToolCallSummary {
+  tool: string;
+  summary: string;
+}
+
+export interface AskResponse {
+  answer: string;
+  tools_used: ToolCallSummary[];
+}

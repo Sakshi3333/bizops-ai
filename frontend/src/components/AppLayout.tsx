@@ -20,6 +20,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <NavLink to="/invoices" className={({ isActive }) => (isActive ? "active" : undefined)}>
           Invoices
         </NavLink>
+        <NavLink to="/assistant" className={({ isActive }) => (isActive ? "active" : undefined)}>
+          Assistant
+        </NavLink>
         <button onClick={logout}>Log out</button>
       </nav>
       <main>{children}</main>

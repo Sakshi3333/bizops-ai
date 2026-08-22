@@ -9,6 +9,7 @@ import { ProductsPage } from "./pages/ProductsPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { InvoiceFormPage } from "./pages/InvoiceFormPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
+import { AssistantPage } from "./pages/AssistantPage";
 import "./App.css";
 
 function HomeRedirect() {
@@ -75,6 +76,14 @@ function App() {
         element={
           <ProtectedRoute>
             <InvoiceDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/assistant"
+        element={
+          <ProtectedRoute>
+            <AssistantPage />
           </ProtectedRoute>
         }
       />
