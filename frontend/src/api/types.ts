@@ -92,3 +92,72 @@ export interface ProductOut {
   is_active: boolean;
   created_at: string;
 }
+
+// Mirrors backend/app/schemas/invoice.py exactly.
+// Decimal fields (unit_price, line_total, subtotal, tax_percent, tax_amount,
+// total) are serialized as strings.
+
+export type InvoiceStatus = "DRAFT" | "SENT" | "PAID" | "CANCELLED";
+
+export interface InvoiceItemInput {
+  product_id?: string | null;
+  description?: string | null;
+  quantity: number;
+  unit_price?: string | null;
+}
+
+export interface CreateInvoice {
+  customer_id: string;
+  issue_date: string;
+  due_date: string;
+  tax_percent?: string;
+  notes?: string | null;
+  items: InvoiceItemInput[];
+}
+
+export interface UpdateInvoice {
+  customer_id?: string;
+  issue_date?: string;
+  due_date?: string;
+  tax_percent?: string;
+  notes?: string | null;
+  items?: InvoiceItemInput[];
+}
+
+export interface ChangeInvoiceStatus {
+  status: InvoiceStatus;
+}
+
+export interface InvoiceItemOut {
+  id: string;
+  product_id: string | null;
+  description: string;
+  quantity: number;
+  unit_price: string;
+  line_total: string;
+}
+
+export interface InvoiceOut {
+  id: string;
+  company_id: string;
+  customer_id: string;
+  number: string;
+  status: InvoiceStatus;
+  issue_date: string;
+  due_date: string;
+  paid_at: string | null;
+  subtotal: string;
+  tax_percent: string;
+  tax_amount: string;
+  total: string;
+  notes: string | null;
+  created_at: string;
+  items: InvoiceItemOut[];
+}
+
+export const INVOICE_VALID_TRANSITIONS: Record<InvoiceStatus, InvoiceStatus[]> = {
+  DRAFT: ["SENT", "CANCELLED"],
+  SENT: ["PAID", "CANCELLED"],
+  PAID: [],
+  CANCELLED: [],
+};

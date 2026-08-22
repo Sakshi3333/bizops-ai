@@ -6,6 +6,9 @@ import { RegisterPage } from "./pages/RegisterPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { ProductsPage } from "./pages/ProductsPage";
+import { InvoicesPage } from "./pages/InvoicesPage";
+import { InvoiceFormPage } from "./pages/InvoiceFormPage";
+import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
 import "./App.css";
 
 function HomeRedirect() {
@@ -40,6 +43,38 @@ function App() {
         element={
           <ProtectedRoute>
             <ProductsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/invoices"
+        element={
+          <ProtectedRoute>
+            <InvoicesPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/invoices/new"
+        element={
+          <ProtectedRoute>
+            <InvoiceFormPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/invoices/:id/edit"
+        element={
+          <ProtectedRoute>
+            <InvoiceFormPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/invoices/:id"
+        element={
+          <ProtectedRoute>
+            <InvoiceDetailPage />
           </ProtectedRoute>
         }
       />

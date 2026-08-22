@@ -9,6 +9,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from app.core.security import decode_access_token
 from app.models.company import Company
 from app.models.customer import Customer
+from app.models.invoice import Invoice
 from app.models.product import Product
 from app.models.user import User, UserRole
 
@@ -119,4 +120,14 @@ def _apply_tenant_filter(execute_state):
             lambda cls: cls.company_id == tenant_id,
             include_aliases=True,
         ),
+        with_loader_criteria(
+            Invoice,
+            lambda cls: cls.company_id == tenant_id,
+            include_aliases=True,
+        ),
+        # InvoiceItem has no company_id of its own; it must never be
+        # queried standalone. It's only ever reached through an
+        # already-tenant-scoped Invoice via the relationship above, and
+        # relationship loads bypass this filter entirely (see the
+        # is_relationship_load check above), so no entry is needed here.
     )
