@@ -7,7 +7,7 @@ services:
     rootDir: backend
     dockerfilePath: ./Dockerfile
     plan: free
-    region: singapore
+    region: ohio # same region as the Neon database (AWS us-east-2)
     healthCheckPath: /health
     autoDeploy: true
     envVars:
