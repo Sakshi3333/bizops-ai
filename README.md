@@ -13,6 +13,10 @@ Click **Admin**, **Manager** or **Employee** on the login page to sign in to a s
 |---|---|
 | ![AI assistant](docs/screenshots/assistant.png) | ![Invoices](docs/screenshots/invoices.png) |
 
+| One-click demo login | |
+|---|---|
+| ![Login](docs/screenshots/login.png) | Light and dark mode, responsive down to phone width. |
+
 ---
 
 ## Features
@@ -27,7 +31,7 @@ Click **Admin**, **Manager** or **Employee** on the login page to sign in to a s
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, Vite, React Router |
+| Frontend | React 19, TypeScript, Vite, React Router, Lucide icons |
 | Backend | Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Pydantic |
 | Database | PostgreSQL |
 | AI | Google Gemini (function calling) |
