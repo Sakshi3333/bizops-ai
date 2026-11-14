@@ -1,9 +1,59 @@
 # BizOps AI
 
-A two-part full-stack project:
+**Multi-tenant invoicing, inventory and analytics for small businesses, with an AI assistant that answers questions from the company's own data.**
 
-- **`backend/`** — FastAPI (Python 3.12) API
-- **`frontend/`** — React + TypeScript app (Vite)
+### 🔗 [Live demo → bizops-ai-xi.vercel.app](https://bizops-ai-xi.vercel.app)
+
+Click **Admin**, **Manager** or **Employee** on the login page to sign in to a sample company. No sign-up needed.
+*Hosted on free tiers, so the first load after a quiet spell can take up to a minute while the API wakes up.*
+
+![Dashboard](docs/screenshots/dashboard.png)
+
+| AI assistant | Invoices |
+|---|---|
+| ![AI assistant](docs/screenshots/assistant.png) | ![Invoices](docs/screenshots/invoices.png) |
+
+---
+
+## Features
+
+- **Dashboard**: revenue this month vs last, outstanding and overdue totals, a 12-month paid-revenue chart, invoice status breakdown, top customers and low-stock alerts.
+- **Invoices with a real workflow**: Draft → Sent → Paid / Cancelled. Sending an invoice takes stock out, and cancelling it puts the stock back. Only drafts can be edited. Each invoice can be downloaded as a PDF.
+- **Customers and products**: deleting archives them instead, so past invoices keep their references.
+- **AI assistant**: ask "Which customers haven't paid?" in plain English. Gemini uses function calling to choose from a set of read-only tools, and every answer lists the data it used.
+- **Multi-tenancy and roles**: each company sees only its own data. Admin, Manager and Employee roles get different permissions.
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 19, TypeScript, Vite, React Router |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Pydantic |
+| Database | PostgreSQL |
+| AI | Google Gemini (function calling) |
+| Auth | JWT, bcrypt, role-based access |
+| Other | ReportLab (PDFs), Docker and Docker Compose |
+| Hosting | Vercel (frontend), Render (API, Docker), Neon (Postgres) |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    U[Browser] -->|HTTPS| V[Vercel<br/>React + Vite SPA]
+    V -->|REST + JWT| R[Render<br/>FastAPI in Docker]
+    R -->|SQLAlchemy| N[(Neon<br/>PostgreSQL)]
+    R -->|function calling| G[Google Gemini]
+```
+
+## Engineering highlights
+
+- **Tenant isolation is enforced automatically, not left to each query.** A middleware reads the company from the JWT into a context variable. A SQLAlchemy `do_orm_execute` hook then adds a tenant filter to every ORM query, so an endpoint that forgets to filter still can't leak another company's data. Building this exposed a real cross-tenant leak, which is now fixed.
+- **The AI can't reach outside its tenant.** Every assistant tool is read-only and has no company or tenant parameter. Each one wraps a service function that is already scoped to the current tenant, so neither the model nor a crafted prompt has a way to ask for another company's records.
+- **The AI only answers from real data.** The assistant runs a bounded tool-calling loop, and the UI shows which tools were called for each answer.
+- **Invoices behave like financial records.** Once issued they can't be edited, status changes follow allowed transitions only, and stock moves with them.
+- **The public demo stays clean.** On startup the API applies migrations and rebuilds the demo company once it's more than 24 hours old, so dates stay current and visitors' edits are undone.
+
+---
 
 ## Quick start (Docker)
 
