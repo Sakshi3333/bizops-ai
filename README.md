@@ -84,7 +84,11 @@ docker compose exec backend python -m app.seed   # optional demo data
 
 ## Running the backend
 
+Start a local database first (from this folder). It listens on host port 5433, which
+matches `backend/.env.example`. Never point a local `.env` at the hosted demo database.
+
 ```bash
+docker compose up -d db
 cd backend
 python -m venv venv
 venv\Scripts\activate        # Windows
@@ -114,7 +118,7 @@ endpoint on load to confirm the two sides can talk to each other.
 
 - Python 3.12+
 - Node.js 20+
-- A PostgreSQL database (for `DATABASE_URL`)
+- A PostgreSQL database (for `DATABASE_URL`); `docker compose up -d db` gives you one on port 5433
 
 ## Deployment (free tier)
 
