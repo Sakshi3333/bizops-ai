@@ -61,3 +61,22 @@ endpoint on load to confirm the two sides can talk to each other.
 - Python 3.12+
 - Node.js 20+
 - A PostgreSQL database (for `DATABASE_URL`)
+
+## Deployment (free tier)
+
+| Part | Host | Config |
+|---|---|---|
+| PostgreSQL | [Neon](https://neon.tech) | copy the pooled connection string |
+| API | [Render](https://render.com) (Docker) | `render.yaml` blueprint |
+| Frontend | [Vercel](https://vercel.com) (Vite) | `frontend/vercel.json`, root directory `frontend` |
+
+1. **Neon** — create a project and copy its connection string (`postgresql://...?sslmode=require`).
+2. **Render** — *New → Blueprint*, pick this repo. Fill in `DATABASE_URL` (Neon), `CORS_ORIGINS`
+   (the Vercel URL, no trailing slash) and optionally `GEMINI_API_KEY`. `JWT_SECRET_KEY` is generated.
+   Migrations run and the demo company is seeded on startup (`SEED_DEMO_DATA=true`).
+3. **Vercel** — import the repo, set *Root Directory* to `frontend`, add
+   `VITE_API_URL=https://<your-render-service>.onrender.com`, deploy.
+4. Back on Render, make sure `CORS_ORIGINS` matches the final Vercel domain.
+
+The free Render instance sleeps after ~15 minutes idle; the first request after that takes
+up to a minute, and the login page tells visitors so.

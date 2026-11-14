@@ -14,5 +14,6 @@ COPY alembic ./alembic
 
 EXPOSE 8000
 
-# Apply any pending migrations, then start the API.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Apply any pending migrations, optionally load demo data (the seed is idempotent),
+# then start the API. Hosts like Render inject $PORT; locally it defaults to 8000.
+CMD ["sh", "-c", "alembic upgrade head && if [ \"$SEED_DEMO_DATA\" = \"true\" ]; then python -m app.seed; fi && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips='*'"]

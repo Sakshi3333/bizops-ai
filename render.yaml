@@ -1,0 +1,25 @@
+# Render Blueprint for the API. The database lives on Neon (free, no expiry) and
+# the frontend on Vercel, so only the backend is defined here.
+services:
+  - type: web
+    name: bizops-ai-api
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: SEED_DEMO_DATA
+        value: "true"
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false # paste the Neon connection string
+      - key: CORS_ORIGINS
+        sync: false # e.g. https://bizops-ai.vercel.app
+      - key: GEMINI_API_KEY
+        sync: false # optional; the assistant page reports itself unavailable without it

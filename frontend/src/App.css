@@ -114,6 +114,24 @@
   font-size: 14px;
 }
 
+.demo-logins {
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.demo-logins h2 {
+  font-size: 18px;
+  margin: 0 0 4px;
+}
+
+.demo-login-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .dashboard-page dl {
   display: grid;
   grid-template-columns: auto 1fr;
