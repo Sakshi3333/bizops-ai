@@ -24,9 +24,11 @@ class Settings(BaseSettings):
     @field_validator("database_url")
     @classmethod
     def _normalize_database_url(cls, value: str) -> str:
-        # Some hosts (Render, Heroku) hand out postgres://, which SQLAlchemy 2 rejects.
-        if value.startswith("postgres://"):
-            return "postgresql://" + value.removeprefix("postgres://")
+        # Pin the driver we install (psycopg2): some hosts hand out postgres://, which
+        # SQLAlchemy rejects, and SQLAlchemy 2.1 maps a bare postgresql:// to psycopg 3.
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg2://" + value.removeprefix(prefix)
         return value
 
     @model_validator(mode="after")
