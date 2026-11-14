@@ -15,6 +15,8 @@ def search_customers_by_name(db: Session, name: str, limit: int = 10) -> list[Cu
     pattern = f"%{name}%"
     return list(
         db.scalars(
-            select(Customer).where(Customer.name.ilike(pattern)).order_by(Customer.name).limit(limit)
+            select(Customer)
+            .where(Customer.is_active.is_(True), Customer.name.ilike(pattern))
+            .order_by(Customer.name).limit(limit)
         ).all()
     )

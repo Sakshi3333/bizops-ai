@@ -2,12 +2,13 @@ import uuid
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.deps import get_current_user
+from app.core.deps import MANAGER_ROLES, get_current_user
+from app.models.company import Company
 from app.models.customer import Customer
 from app.models.invoice import Invoice, InvoiceItem, InvoiceStatus
 from app.models.product import Product
@@ -19,6 +20,7 @@ from app.schemas.invoice import (
     InvoiceOut,
     UpdateInvoice,
 )
+from app.services.invoice_pdf import render_invoice_pdf
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
@@ -39,6 +41,15 @@ def _get_invoice_or_404(invoice_id: uuid.UUID, db: Session) -> Invoice:
     return invoice
 
 
+def _get_active_customer_or_error(customer_id: uuid.UUID, db: Session) -> Customer:
+    customer = db.scalar(select(Customer).where(Customer.id == customer_id))
+    if customer is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Customer not found")
+    if not customer.is_active:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Customer is archived")
+    return customer
+
+
 def _next_invoice_number(issue_date: date, db: Session) -> str:
     prefix = f"INV-{issue_date.year}-"
     last_number = db.scalar(
@@ -56,6 +67,8 @@ def _build_items(item_inputs: list[InvoiceItemInput], db: Session) -> tuple[list
             product = db.scalar(select(Product).where(Product.id == item_input.product_id))
             if product is None:
                 raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
+            if not product.is_active:
+                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Product '{product.name}' is archived")
             description = product.name
             unit_price = product.unit_price
         else:
@@ -102,9 +115,7 @@ def create_invoice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Invoice:
-    customer = db.scalar(select(Customer).where(Customer.id == payload.customer_id))
-    if customer is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Customer not found")
+    _get_active_customer_or_error(payload.customer_id, db)
 
     items, subtotal = _build_items(payload.items, db)
 
@@ -137,6 +148,23 @@ def get_invoice(
     return _get_invoice_or_404(invoice_id, db)
 
 
+@router.get("/{invoice_id}/pdf", response_class=Response)
+def download_invoice_pdf(
+    invoice_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Response:
+    invoice = _get_invoice_or_404(invoice_id, db)
+    company = db.scalar(select(Company).where(Company.id == invoice.company_id))
+    customer = db.scalar(select(Customer).where(Customer.id == invoice.customer_id))
+    pdf = render_invoice_pdf(invoice, company, customer)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{invoice.number}.pdf"'},
+    )
+
+
 @router.patch("/{invoice_id}", response_model=InvoiceOut)
 def update_invoice(
     invoice_id: uuid.UUID,
@@ -148,9 +176,7 @@ def update_invoice(
     _require_draft(invoice)
 
     if payload.customer_id is not None:
-        customer = db.scalar(select(Customer).where(Customer.id == payload.customer_id))
-        if customer is None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Customer not found")
+        _get_active_customer_or_error(payload.customer_id, db)
         invoice.customer_id = payload.customer_id
     if payload.issue_date is not None:
         invoice.issue_date = payload.issue_date
@@ -187,6 +213,11 @@ def change_invoice_status(
         raise HTTPException(
             status.HTTP_409_CONFLICT,
             f"Cannot transition invoice from {invoice.status.value} to {payload.status.value}",
+        )
+
+    if payload.status == InvoiceStatus.CANCELLED and current_user.role not in MANAGER_ROLES:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN, "Only managers and admins can cancel invoices"
         )
 
     if invoice.status == InvoiceStatus.DRAFT and payload.status == InvoiceStatus.SENT:

@@ -20,10 +20,15 @@ export interface RegisterCompanyInput {
   adminPassword: string;
 }
 
+// Mirrors MANAGER_ROLES in backend/app/core/deps.py.
+const MANAGER_ROLES = ["SUPERADMIN", "ADMIN", "MANAGER"];
+
 interface AuthContextValue {
   token: string | null;
   claims: AccessTokenClaims | null;
   isAuthenticated: boolean;
+  /** Can manage products and perform destructive actions (delete, cancel). */
+  isManager: boolean;
   login: (email: string, password: string) => Promise<void>;
   registerCompany: (input: RegisterCompanyInput) => Promise<void>;
   logout: () => void;
@@ -100,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       claims,
       isAuthenticated: token !== null,
+      isManager: claims !== null && MANAGER_ROLES.includes(claims.role),
       login,
       registerCompany,
       logout,

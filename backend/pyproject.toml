@@ -15,6 +15,7 @@ dependencies = [
     "pyjwt>=2.8",
     "email-validator>=2.1",
     "google-genai>=1.0",
+    "reportlab>=4.2",
 ]
 
 [build-system]

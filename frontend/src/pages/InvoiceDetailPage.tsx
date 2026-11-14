@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
+import { useAuth } from "../auth/AuthContext";
 import { StatusBadge } from "../components/StatusBadge";
 import { INVOICE_VALID_TRANSITIONS } from "../api/types";
 import type { ChangeInvoiceStatus, CustomerOut, InvoiceOut, InvoiceStatus } from "../api/types";
@@ -20,6 +21,7 @@ const STATUS_ACTION_LABEL: Record<InvoiceStatus, string> = {
 export function InvoiceDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { isManager } = useAuth();
   const [invoice, setInvoice] = useState<InvoiceOut | null>(null);
   const [customer, setCustomer] = useState<CustomerOut | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,26 @@ export function InvoiceDetailPage() {
       setActionError(extractErrorMessage(err));
     } finally {
       setActionPending(false);
+    }
+  }
+
+  // A plain <a href> can't send the bearer token, so fetch the PDF as a blob
+  // through the authenticated client and hand it to the browser to save.
+  async function handleDownloadPdf() {
+    if (!invoice) return;
+    setActionError(null);
+    try {
+      const { data } = await apiClient.get<Blob>(`/invoices/${invoice.id}/pdf`, {
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${invoice.number}.pdf`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setActionError(extractErrorMessage(err));
     }
   }
 
@@ -130,7 +152,9 @@ export function InvoiceDetailPage() {
               {invoice.status === "DRAFT" && (
                 <button onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>Edit</button>
               )}
-              {INVOICE_VALID_TRANSITIONS[invoice.status].map((nextStatus) => (
+              {INVOICE_VALID_TRANSITIONS[invoice.status]
+                .filter((nextStatus) => isManager || nextStatus !== "CANCELLED")
+                .map((nextStatus) => (
                 <button
                   key={nextStatus}
                   disabled={actionPending}
@@ -139,6 +163,7 @@ export function InvoiceDetailPage() {
                   {STATUS_ACTION_LABEL[nextStatus]}
                 </button>
               ))}
+              <button onClick={handleDownloadPdf}>Download PDF</button>
               <Link to="/invoices">Back to invoices</Link>
             </div>
           </>

@@ -190,7 +190,9 @@ class LowStockProductRow:
 
 def list_low_stock_products(db: Session) -> list[LowStockProductRow]:
     rows = db.scalars(
-        select(Product).where(Product.stock_quantity < Product.reorder_level).order_by(Product.stock_quantity)
+        select(Product)
+        .where(Product.is_active.is_(True), Product.stock_quantity < Product.reorder_level)
+        .order_by(Product.stock_quantity)
     ).all()
     return [
         LowStockProductRow(

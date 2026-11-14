@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
+import { useAuth } from "../auth/AuthContext";
 import type { CreateCustomer, CustomerOut, UpdateCustomer } from "../api/types";
 
 interface CustomerFormState {
@@ -14,6 +15,7 @@ interface CustomerFormState {
 const emptyForm: CustomerFormState = { name: "", email: "", phone: "", address: "" };
 
 export function CustomersPage() {
+  const { isManager } = useAuth();
   const [customers, setCustomers] = useState<CustomerOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -182,7 +184,9 @@ export function CustomersPage() {
                   <td>{customer.address ?? "—"}</td>
                   <td className="customers-actions">
                     <button onClick={() => openEditForm(customer)}>Edit</button>
-                    <button onClick={() => handleDelete(customer.id)}>Delete</button>
+                    {isManager && (
+                      <button onClick={() => handleDelete(customer.id)}>Archive</button>
+                    )}
                   </td>
                 </tr>
               ))}

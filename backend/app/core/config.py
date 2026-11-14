@@ -14,5 +14,8 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60 * 24
 
+    # Comma-separated list of frontend origins allowed to call the API.
+    cors_origins: str = "http://localhost:5173"
+
 
 settings = Settings()

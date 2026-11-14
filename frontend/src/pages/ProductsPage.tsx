@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
+import { useAuth } from "../auth/AuthContext";
 import type { CreateProduct, ProductOut, UpdateProduct } from "../api/types";
 
 interface ProductFormState {
@@ -23,6 +24,7 @@ const emptyForm: ProductFormState = {
 };
 
 export function ProductsPage() {
+  const { isManager } = useAuth();
   const [products, setProducts] = useState<ProductOut[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -122,7 +124,7 @@ export function ProductsPage() {
       <div className="customers-page">
         <div className="customers-header">
           <h1>Products</h1>
-          <button onClick={openNewForm}>New Product</button>
+          {isManager && <button onClick={openNewForm}>New Product</button>}
         </div>
 
         {formOpen && (
@@ -222,8 +224,12 @@ export function ProductsPage() {
                   <td>{product.stock_quantity}</td>
                   <td>{product.reorder_level}</td>
                   <td className="customers-actions">
-                    <button onClick={() => openEditForm(product)}>Edit</button>
-                    <button onClick={() => handleDelete(product.id)}>Delete</button>
+                    {isManager && (
+                      <>
+                        <button onClick={() => openEditForm(product)}>Edit</button>
+                        <button onClick={() => handleDelete(product.id)}>Archive</button>
+                      </>
+                    )}
                   </td>
                 </tr>
               ))}

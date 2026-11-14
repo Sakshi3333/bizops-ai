@@ -54,3 +54,8 @@ def require_role(*roles: UserRole):
         return user
 
     return _checker
+
+
+# Roles allowed to manage the catalogue and perform destructive actions.
+MANAGER_ROLES = (UserRole.SUPERADMIN, UserRole.ADMIN, UserRole.MANAGER)
+require_manager = require_role(*MANAGER_ROLES)
