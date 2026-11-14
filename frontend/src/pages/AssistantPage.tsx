@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type KeyboardEvent } from "react";
+import Markdown from "react-markdown";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
@@ -38,6 +39,14 @@ export function AssistantPage() {
     ask(question);
   }
 
+  // Enter asks, Shift+Enter adds a new line - the usual chat convention.
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      if (!loading) ask(question);
+    }
+  }
+
   return (
     <AppLayout>
       <div className="assistant-page">
@@ -51,6 +60,7 @@ export function AssistantPage() {
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="e.g. What's my outstanding revenue?"
             rows={3}
           />
@@ -80,7 +90,10 @@ export function AssistantPage() {
 
         {result && (
           <div className="assistant-answer">
-            <p>{result.answer}</p>
+            {/* The model answers in Markdown; react-markdown never renders raw HTML. */}
+            <div className="assistant-answer-body">
+              <Markdown>{result.answer}</Markdown>
+            </div>
             {result.tools_used.length > 0 && (
               <div className="assistant-tools-used">
                 <span className="muted-text">Data used:</span>

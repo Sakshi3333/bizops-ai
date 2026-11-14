@@ -15,6 +15,8 @@ services:
         value: production
       - key: SEED_DEMO_DATA
         value: "true"
+      - key: DEMO_REFRESH_HOURS
+        value: "24" # rebuild the demo company daily (on the next start) to keep dates current
       - key: JWT_SECRET_KEY
         generateValue: true
       - key: DATABASE_URL

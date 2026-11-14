@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
@@ -9,8 +10,12 @@ import { ProductsPage } from "./pages/ProductsPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { InvoiceFormPage } from "./pages/InvoiceFormPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
-import { AssistantPage } from "./pages/AssistantPage";
 import "./App.css";
+
+// Split out: the Markdown renderer it needs is the heaviest dependency in the app.
+const AssistantPage = lazy(() =>
+  import("./pages/AssistantPage").then((module) => ({ default: module.AssistantPage })),
+);
 
 function HomeRedirect() {
   const { isAuthenticated } = useAuth();
@@ -83,7 +88,9 @@ function App() {
         path="/assistant"
         element={
           <ProtectedRoute>
-            <AssistantPage />
+            <Suspense fallback={null}>
+              <AssistantPage />
+            </Suspense>
           </ProtectedRoute>
         }
       />

@@ -731,10 +731,28 @@
   padding: 16px 18px;
 }
 
-.assistant-answer p {
-  margin: 0;
+.assistant-answer-body {
   color: var(--text-h);
   line-height: 1.5;
+}
+
+.assistant-answer-body > :first-child {
+  margin-top: 0;
+}
+
+.assistant-answer-body > :last-child {
+  margin-bottom: 0;
+}
+
+.assistant-answer-body p,
+.assistant-answer-body ul,
+.assistant-answer-body ol {
+  margin: 0 0 8px;
+}
+
+.assistant-answer-body ul,
+.assistant-answer-body ol {
+  padding-left: 22px;
 }
 
 .assistant-tools-used {

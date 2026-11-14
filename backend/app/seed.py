@@ -4,13 +4,16 @@ Usage (from backend/):  python -m app.seed
 With Docker:            docker compose exec backend python -m app.seed
 
 Safe to re-run: does nothing if the demo company already exists.
+With --refresh-after-hours N, a demo company older than N hours is deleted and
+rebuilt, so a public demo keeps current dates and sheds visitors' edits.
 """
 
+import argparse
 import random
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.core.database import SessionLocal
 from app.core.security import hash_password
@@ -56,14 +59,28 @@ def _add_months(d: date, delta: int) -> date:
     return date(d.year + month_index // 12, month_index % 12 + 1, 1)
 
 
-def seed() -> None:
+def _delete_company(db, company_id) -> None:
+    invoice_ids = select(Invoice.id).where(Invoice.company_id == company_id)
+    db.execute(delete(InvoiceItem).where(InvoiceItem.invoice_id.in_(invoice_ids)))
+    for model in (Invoice, Customer, Product, User):
+        db.execute(delete(model).where(model.company_id == company_id))
+    db.execute(delete(Company).where(Company.id == company_id))
+
+
+def seed(refresh_after: timedelta | None = None) -> None:
     rng = random.Random(42)  # deterministic, so every demo looks the same
 
     # No request is in flight, so there's no tenant filter; run unscoped explicitly.
     with tenant_context(None), SessionLocal() as db:
-        if db.scalar(select(Company).where(Company.name == DEMO_COMPANY)) is not None:
-            print(f"'{DEMO_COMPANY}' already exists - nothing to do.")
-            return
+        existing = db.scalar(select(Company).where(Company.name == DEMO_COMPANY))
+        if existing is not None:
+            age = datetime.now(timezone.utc) - existing.created_at
+            if refresh_after is None or age < refresh_after:
+                print(f"'{DEMO_COMPANY}' already exists - nothing to do.")
+                return
+            print(f"'{DEMO_COMPANY}' is {age.days}d {age.seconds // 3600}h old - rebuilding it.")
+            _delete_company(db, existing.id)
+            db.flush()
 
         company = Company(name=DEMO_COMPANY, email="accounts@demotraders.in", currency="INR")
         db.add(company)
@@ -97,14 +114,17 @@ def seed() -> None:
         # Roughly 4-6 invoices per month over the last six months.
         for months_back in range(5, -1, -1):
             month_start = _add_months(today.replace(day=1), -months_back)
-            for _ in range(rng.randint(4, 6)):
+            for n in range(rng.randint(4, 6)):
                 issue_date = month_start + timedelta(days=rng.randint(0, 27))
                 if issue_date > today:
                     issue_date = today
                 due_date = issue_date + timedelta(days=15)
 
-                # Older invoices are mostly settled; recent ones are a mix.
-                if months_back >= 2:
+                # Older invoices are mostly settled; recent ones are a mix. The first two
+                # this month are paid, so "revenue this month" is never an empty zero.
+                if months_back == 0 and n < 2:
+                    status = InvoiceStatus.PAID
+                elif months_back >= 2:
                     status = rng.choices(
                         [InvoiceStatus.PAID, InvoiceStatus.SENT, InvoiceStatus.CANCELLED], [80, 12, 8]
                     )[0]
@@ -165,4 +185,11 @@ def seed() -> None:
 
 
 if __name__ == "__main__":
-    seed()
+    parser = argparse.ArgumentParser(description="Create the demo company.")
+    parser.add_argument(
+        "--refresh-after-hours",
+        type=float,
+        help="rebuild the demo company if it is older than this many hours",
+    )
+    args = parser.parse_args()
+    seed(timedelta(hours=args.refresh_after_hours) if args.refresh_after_hours else None)
