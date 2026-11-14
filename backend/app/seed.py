@@ -111,8 +111,9 @@ def seed(refresh_after: timedelta | None = None) -> None:
         seq_by_year: dict[int, int] = {}
         invoice_count = 0
 
-        # Roughly 4-6 invoices per month over the last six months.
-        for months_back in range(5, -1, -1):
+        # Roughly 4-6 invoices per month over the last twelve months, matching the
+        # dashboard's 12-month revenue chart.
+        for months_back in range(11, -1, -1):
             month_start = _add_months(today.replace(day=1), -months_back)
             for n in range(rng.randint(4, 6)):
                 issue_date = month_start + timedelta(days=rng.randint(0, 27))

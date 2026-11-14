@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { AuthShell } from "../components/AuthShell";
 import { extractErrorMessage } from "../api/errors";
 
 export function RegisterPage() {
@@ -32,8 +33,9 @@ export function RegisterPage() {
   }
 
   return (
-    <main className="auth-page">
-      <h1>Register your company</h1>
+    <AuthShell>
+      <h1>Create your company</h1>
+      <p>Start a workspace for your business. You'll be its admin.</p>
       <form onSubmit={handleSubmit}>
         <label>
           Company name
@@ -74,13 +76,13 @@ export function RegisterPage() {
           />
         </label>
         {error && <p className="form-error">{error}</p>}
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting ? "Creating..." : "Create company"}
         </button>
       </form>
-      <p>
+      <p className="auth-switch">
         Already have an account? <Link to="/login">Log in</Link>
       </p>
-    </main>
+    </AuthShell>
   );
 }

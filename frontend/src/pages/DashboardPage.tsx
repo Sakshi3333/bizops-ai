@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
+import { useNavigate } from "react-router-dom";
+import { AlertTriangle, ArrowDownRight, ArrowUpRight, Clock, Plus, Wallet } from "lucide-react";
 import { apiClient } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { extractErrorMessage } from "../api/errors";
@@ -16,25 +18,48 @@ function formatMoney(value: string, currency?: string): string {
 function StatTile({
   label,
   value,
+  icon: Icon,
+  tone,
   delta,
+  hint,
 }: {
   label: string;
   value: string;
+  icon: ComponentType<{ size?: number }>;
+  tone: "accent" | "warn" | "bad";
   delta?: { text: string; good: boolean } | null;
+  hint?: string;
 }) {
   return (
     <div className="stat-tile">
-      <div className="stat-tile-label">{label}</div>
+      <div className="stat-tile-top">
+        <span className="stat-tile-label">{label}</span>
+        <span className={`stat-tile-icon tone-${tone}`}>
+          <Icon size={18} />
+        </span>
+      </div>
       <div className="stat-tile-value">{value}</div>
       {delta && (
-        <div className={`stat-tile-delta ${delta.good ? "delta-good" : "delta-bad"}`}>{delta.text}</div>
+        <div className={`stat-tile-delta ${delta.good ? "delta-good" : "delta-bad"}`}>
+          {delta.good ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+          {delta.text}
+        </div>
       )}
+      {!delta && hint && <div className="stat-tile-hint">{hint}</div>}
     </div>
   );
 }
 
+function greeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 export function DashboardPage() {
   const { claims } = useAuth();
+  const navigate = useNavigate();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,9 +100,27 @@ export function DashboardPage() {
   return (
     <AppLayout>
       <div className="dashboard-page">
-        <h1>Dashboard{claims?.company_name ? ` — ${claims.company_name}` : ""}</h1>
+        <div className="page-header">
+          <div>
+            <h1>{greeting()}</h1>
+            <p className="page-subtitle">
+              Here's how {claims?.company_name ?? "your business"} is doing this month.
+            </p>
+          </div>
+          <div className="page-actions">
+            <button type="button" className="btn-primary" onClick={() => navigate("/invoices/new")}>
+              <Plus size={16} />
+              New invoice
+            </button>
+          </div>
+        </div>
 
-        {loading && <p>Loading...</p>}
+        {loading && (
+          <div className="loading">
+            <span className="spinner" />
+            Loading your numbers...
+          </div>
+        )}
         {error && <p className="form-error">{error}</p>}
 
         {summary && (
@@ -86,15 +129,24 @@ export function DashboardPage() {
               <StatTile
                 label="Revenue this month"
                 value={formatMoney(summary.revenue_this_month, claims?.currency)}
+                icon={Wallet}
+                tone="accent"
                 delta={revenueDelta}
+                hint="No paid invoices last month to compare"
               />
               <StatTile
                 label="Outstanding"
                 value={formatMoney(summary.outstanding_total, claims?.currency)}
+                icon={Clock}
+                tone="warn"
+                hint="Sent invoices awaiting payment"
               />
               <StatTile
                 label="Overdue"
                 value={formatMoney(summary.overdue_total, claims?.currency)}
+                icon={AlertTriangle}
+                tone="bad"
+                hint="Past their due date"
               />
             </div>
 
@@ -116,9 +168,12 @@ export function DashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {summary.top_customers.map((c) => (
+                      {summary.top_customers.map((c, i) => (
                         <tr key={c.customer_id}>
-                          <td>{c.name}</td>
+                          <td>
+                            <span className="rank">{i + 1}</span>
+                            {c.name}
+                          </td>
                           <td>{formatMoney(c.total_billed, claims?.currency)}</td>
                         </tr>
                       ))}
@@ -144,7 +199,8 @@ export function DashboardPage() {
                       {summary.low_stock_products.map((p) => (
                         <tr key={p.product_id}>
                           <td>
-                            {p.sku} — {p.name}
+                            <div className="cell-strong">{p.name}</div>
+                            <div className="muted-text mono">{p.sku}</div>
                           </td>
                           <td className="low-stock-value">{p.stock_quantity}</td>
                           <td>{p.reorder_level}</td>

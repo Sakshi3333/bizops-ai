@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { apiClient } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
 import { StatusBadge } from "../components/StatusBadge";
@@ -8,6 +10,7 @@ import type { CustomerOut, InvoiceOut } from "../api/types";
 
 export function InvoicesPage() {
   const navigate = useNavigate();
+  const { claims } = useAuth();
   const [invoices, setInvoices] = useState<InvoiceOut[]>([]);
   const [customers, setCustomers] = useState<CustomerOut[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,11 +36,24 @@ export function InvoicesPage() {
     <AppLayout>
       <div className="invoices-page">
         <div className="invoices-header">
-          <h1>Invoices</h1>
-          <button onClick={() => navigate("/invoices/new")}>New Invoice</button>
+          <div>
+            <h1>Invoices</h1>
+            <p className="page-subtitle">
+              {loading ? "Loading..." : `${invoices.length} invoices - click one to view, send or mark paid.`}
+            </p>
+          </div>
+          <button className="btn-primary" onClick={() => navigate("/invoices/new")}>
+            <Plus size={16} />
+            New invoice
+          </button>
         </div>
 
-        {loading && <p>Loading...</p>}
+        {loading && (
+          <div className="loading">
+            <span className="spinner" />
+            Loading...
+          </div>
+        )}
         {error && <p className="form-error">{error}</p>}
 
         {!loading && !error && (
@@ -47,8 +63,8 @@ export function InvoicesPage() {
                 <th>Number</th>
                 <th>Customer</th>
                 <th>Status</th>
-                <th>Total</th>
                 <th>Due date</th>
+                <th className="num">Total</th>
               </tr>
             </thead>
             <tbody>
@@ -59,13 +75,15 @@ export function InvoicesPage() {
               )}
               {invoices.map((invoice) => (
                 <tr key={invoice.id} onClick={() => navigate(`/invoices/${invoice.id}`)}>
-                  <td>{invoice.number}</td>
+                  <td className="cell-strong mono">{invoice.number}</td>
                   <td>{customerName(invoice.customer_id)}</td>
                   <td>
                     <StatusBadge status={invoice.status} />
                   </td>
-                  <td>{invoice.total}</td>
-                  <td>{invoice.due_date}</td>
+                  <td className="cell-muted">{invoice.due_date}</td>
+                  <td className="num cell-strong">
+                    {claims?.currency} {Number(invoice.total).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                  </td>
                 </tr>
               ))}
             </tbody>

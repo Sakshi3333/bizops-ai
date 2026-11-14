@@ -1,14 +1,31 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, Briefcase, ShieldCheck, UserRound } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { extractErrorMessage } from "../api/errors";
+import { AuthShell } from "../components/AuthShell";
 
 // Accounts created by backend/app/seed.py, so visitors can try each role in one click.
 const DEMO_PASSWORD = "demo1234";
 const DEMO_ACCOUNTS = [
-  { role: "Admin", email: "admin@demo.bizops" },
-  { role: "Manager", email: "manager@demo.bizops" },
-  { role: "Employee", email: "employee@demo.bizops" },
+  {
+    role: "Admin",
+    email: "admin@demo.bizops",
+    description: "Full access to the company workspace",
+    icon: ShieldCheck,
+  },
+  {
+    role: "Manager",
+    email: "manager@demo.bizops",
+    description: "Manages products, archives records, cancels invoices",
+    icon: Briefcase,
+  },
+  {
+    role: "Employee",
+    email: "employee@demo.bizops",
+    description: "Creates invoices and customers - no destructive actions",
+    icon: UserRound,
+  },
 ];
 
 // The hosted API sleeps when idle, so the first request can take a while.
@@ -55,8 +72,10 @@ export function LoginPage() {
   }
 
   return (
-    <main className="auth-page">
-      <h1>Log in</h1>
+    <AuthShell>
+      <h1>Welcome back</h1>
+      <p>Log in to your workspace, or explore the demo company below.</p>
+
       <form onSubmit={handleSubmit}>
         <label>
           Email
@@ -65,6 +84,7 @@ export function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
+            placeholder="you@company.com"
             required
           />
         </label>
@@ -79,7 +99,7 @@ export function LoginPage() {
           />
         </label>
         {error && <p className="form-error">{error}</p>}
-        <button type="submit" disabled={submitting}>
+        <button type="submit" className="btn-primary" disabled={submitting}>
           {submitting ? "Logging in..." : "Log in"}
         </button>
         {submitting && slow && (
@@ -91,25 +111,31 @@ export function LoginPage() {
       </form>
 
       <section className="demo-logins">
-        <h2>Try the demo</h2>
-        <p className="muted-text">Sign in as a sample company's staff - each role sees different actions.</p>
+        <div className="demo-divider">Try the demo</div>
         <div className="demo-login-buttons">
-          {DEMO_ACCOUNTS.map((account) => (
+          {DEMO_ACCOUNTS.map(({ role, email: demoEmail, description, icon: Icon }) => (
             <button
-              key={account.email}
+              key={demoEmail}
               type="button"
               disabled={submitting}
-              onClick={() => handleDemo(account.email)}
+              onClick={() => handleDemo(demoEmail)}
             >
-              {account.role}
+              <span className="demo-role-icon">
+                <Icon size={17} />
+              </span>
+              <span className="demo-role-text">
+                <strong>Continue as {role}</strong>
+                <span>{description}</span>
+              </span>
+              <ArrowRight size={16} className="demo-role-arrow" />
             </button>
           ))}
         </div>
       </section>
 
-      <p>
-        No account yet? <Link to="/register">Register a company</Link>
+      <p className="auth-switch">
+        New here? <Link to="/register">Create a company</Link>
       </p>
-    </main>
+    </AuthShell>
   );
 }

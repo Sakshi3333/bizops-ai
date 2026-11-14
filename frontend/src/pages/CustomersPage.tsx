@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Plus } from "lucide-react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
@@ -108,8 +109,14 @@ export function CustomersPage() {
     <AppLayout>
       <div className="customers-page">
         <div className="customers-header">
-          <h1>Customers</h1>
-          <button onClick={openNewForm}>New Customer</button>
+          <div>
+            <h1>Customers</h1>
+            <p className="page-subtitle">The businesses and people you bill.</p>
+          </div>
+          <button className="btn-primary" onClick={openNewForm}>
+            <Plus size={16} />
+            New customer
+          </button>
         </div>
 
         {formOpen && (
@@ -146,7 +153,7 @@ export function CustomersPage() {
             </label>
             {formError && <p className="form-error">{formError}</p>}
             <div className="customer-form-actions">
-              <button type="submit" disabled={submitting}>
+              <button type="submit" className="btn-primary" disabled={submitting}>
                 {submitting ? "Saving..." : editingId ? "Save changes" : "Create customer"}
               </button>
               <button type="button" onClick={closeForm}>
@@ -156,7 +163,12 @@ export function CustomersPage() {
           </form>
         )}
 
-        {loading && <p>Loading...</p>}
+        {loading && (
+          <div className="loading">
+            <span className="spinner" />
+            Loading...
+          </div>
+        )}
         {error && <p className="form-error">{error}</p>}
 
         {!loading && !error && (
@@ -178,14 +190,14 @@ export function CustomersPage() {
               )}
               {customers.map((customer) => (
                 <tr key={customer.id}>
-                  <td>{customer.name}</td>
+                  <td className="cell-strong">{customer.name}</td>
                   <td>{customer.email ?? "—"}</td>
                   <td>{customer.phone ?? "—"}</td>
                   <td>{customer.address ?? "—"}</td>
                   <td className="customers-actions">
-                    <button onClick={() => openEditForm(customer)}>Edit</button>
+                    <button className="btn-sm" onClick={() => openEditForm(customer)}>Edit</button>
                     {isManager && (
-                      <button onClick={() => handleDelete(customer.id)}>Archive</button>
+                      <button className="btn-sm btn-danger" onClick={() => handleDelete(customer.id)}>Archive</button>
                     )}
                   </td>
                 </tr>

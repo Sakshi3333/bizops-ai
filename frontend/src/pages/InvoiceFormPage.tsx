@@ -306,7 +306,7 @@ export function InvoiceFormPage() {
                   </td>
                   <td>{lineTotals[index].toFixed(2)}</td>
                   <td>
-                    <button type="button" onClick={() => removeItem(item.key)}>
+                    <button type="button" className="btn-sm btn-ghost" onClick={() => removeItem(item.key)}>
                       Remove
                     </button>
                   </td>
@@ -330,7 +330,7 @@ export function InvoiceFormPage() {
           {error && <p className="form-error">{error}</p>}
 
           <div className="invoice-detail-actions">
-            <button type="submit" disabled={submitting}>
+            <button type="submit" className="btn-primary" disabled={submitting}>
               {submitting ? "Saving..." : isEdit ? "Save changes" : "Create draft"}
             </button>
             <button type="button" onClick={() => navigate(-1)}>

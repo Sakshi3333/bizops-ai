@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, Download, Pencil } from "lucide-react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
@@ -13,9 +14,9 @@ import type { ChangeInvoiceStatus, CustomerOut, InvoiceOut, InvoiceStatus } from
 // that entry is unreachable - kept only so this is a total Record.
 const STATUS_ACTION_LABEL: Record<InvoiceStatus, string> = {
   DRAFT: "",
-  SENT: "Issue",
-  PAID: "Mark Paid",
-  CANCELLED: "Cancel",
+  SENT: "Issue invoice",
+  PAID: "Mark as paid",
+  CANCELLED: "Cancel invoice",
 };
 
 export function InvoiceDetailPage() {
@@ -85,7 +86,17 @@ export function InvoiceDetailPage() {
   return (
     <AppLayout>
       <div className="invoice-detail-page">
-        {loading && <p>Loading...</p>}
+        <Link to="/invoices" className="back-link">
+          <ArrowLeft size={15} />
+          All invoices
+        </Link>
+
+        {loading && (
+          <div className="loading">
+            <span className="spinner" />
+            Loading invoice...
+          </div>
+        )}
         {error && <p className="form-error">{error}</p>}
 
         {invoice && (
@@ -95,24 +106,30 @@ export function InvoiceDetailPage() {
               <StatusBadge status={invoice.status} />
             </div>
 
-            <dl>
-              <dt>Customer</dt>
-              <dd>{customer?.name ?? invoice.customer_id}</dd>
-              <dt>Issue date</dt>
-              <dd>{invoice.issue_date}</dd>
-              <dt>Due date</dt>
-              <dd>{invoice.due_date}</dd>
+            <dl className="invoice-meta">
+              <div>
+                <dt>Customer</dt>
+                <dd>{customer?.name ?? invoice.customer_id}</dd>
+              </div>
+              <div>
+                <dt>Issue date</dt>
+                <dd>{invoice.issue_date}</dd>
+              </div>
+              <div>
+                <dt>Due date</dt>
+                <dd>{invoice.due_date}</dd>
+              </div>
               {invoice.paid_at && (
-                <>
-                  <dt>Paid at</dt>
-                  <dd>{invoice.paid_at}</dd>
-                </>
+                <div>
+                  <dt>Paid on</dt>
+                  <dd>{invoice.paid_at.slice(0, 10)}</dd>
+                </div>
               )}
               {invoice.notes && (
-                <>
+                <div>
                   <dt>Notes</dt>
                   <dd>{invoice.notes}</dd>
-                </>
+                </div>
               )}
             </dl>
 
@@ -120,18 +137,18 @@ export function InvoiceDetailPage() {
               <thead>
                 <tr>
                   <th>Description</th>
-                  <th>Unit price</th>
-                  <th>Qty</th>
-                  <th>Line total</th>
+                  <th className="num">Unit price</th>
+                  <th className="num">Qty</th>
+                  <th className="num">Line total</th>
                 </tr>
               </thead>
               <tbody>
                 {invoice.items.map((item) => (
                   <tr key={item.id}>
                     <td>{item.description}</td>
-                    <td>{item.unit_price}</td>
-                    <td>{item.quantity}</td>
-                    <td>{item.line_total}</td>
+                    <td className="num">{item.unit_price}</td>
+                    <td className="num">{item.quantity}</td>
+                    <td className="num cell-strong">{item.line_total}</td>
                   </tr>
                 ))}
               </tbody>
@@ -150,21 +167,27 @@ export function InvoiceDetailPage() {
 
             <div className="invoice-detail-actions">
               {invoice.status === "DRAFT" && (
-                <button onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>Edit</button>
+                <button onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
+                  <Pencil size={15} />
+                  Edit
+                </button>
               )}
               {INVOICE_VALID_TRANSITIONS[invoice.status]
                 .filter((nextStatus) => isManager || nextStatus !== "CANCELLED")
                 .map((nextStatus) => (
                 <button
                   key={nextStatus}
+                  className={nextStatus === "CANCELLED" ? "btn-danger" : "btn-primary"}
                   disabled={actionPending}
                   onClick={() => handleStatusChange(nextStatus)}
                 >
                   {STATUS_ACTION_LABEL[nextStatus]}
                 </button>
               ))}
-              <button onClick={handleDownloadPdf}>Download PDF</button>
-              <Link to="/invoices">Back to invoices</Link>
+              <button onClick={handleDownloadPdf}>
+                <Download size={15} />
+                Download PDF
+              </button>
             </div>
           </>
         )}

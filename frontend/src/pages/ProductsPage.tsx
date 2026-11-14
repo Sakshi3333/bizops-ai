@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Plus } from "lucide-react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
@@ -123,8 +124,14 @@ export function ProductsPage() {
     <AppLayout>
       <div className="customers-page">
         <div className="customers-header">
-          <h1>Products</h1>
-          {isManager && <button onClick={openNewForm}>New Product</button>}
+          <div>
+            <h1>Products</h1>
+            <p className="page-subtitle">Your catalogue, prices and stock levels.</p>
+          </div>
+          {isManager && <button className="btn-primary" onClick={openNewForm}>
+            <Plus size={16} />
+            New product
+          </button>}
         </div>
 
         {formOpen && (
@@ -185,7 +192,7 @@ export function ProductsPage() {
             </label>
             {formError && <p className="form-error">{formError}</p>}
             <div className="customer-form-actions">
-              <button type="submit" disabled={submitting}>
+              <button type="submit" className="btn-primary" disabled={submitting}>
                 {submitting ? "Saving..." : editingId ? "Save changes" : "Create product"}
               </button>
               <button type="button" onClick={closeForm}>
@@ -195,7 +202,12 @@ export function ProductsPage() {
           </form>
         )}
 
-        {loading && <p>Loading...</p>}
+        {loading && (
+          <div className="loading">
+            <span className="spinner" />
+            Loading...
+          </div>
+        )}
         {error && <p className="form-error">{error}</p>}
 
         {!loading && !error && (
@@ -204,9 +216,9 @@ export function ProductsPage() {
               <tr>
                 <th>SKU</th>
                 <th>Name</th>
-                <th>Unit price</th>
-                <th>Stock</th>
-                <th>Reorder level</th>
+                <th className="num">Unit price</th>
+                <th className="num">Stock</th>
+                <th className="num">Reorder level</th>
                 <th></th>
               </tr>
             </thead>
@@ -218,16 +230,18 @@ export function ProductsPage() {
               )}
               {products.map((product) => (
                 <tr key={product.id}>
-                  <td>{product.sku}</td>
-                  <td>{product.name}</td>
-                  <td>{product.unit_price}</td>
-                  <td>{product.stock_quantity}</td>
-                  <td>{product.reorder_level}</td>
+                  <td className="mono cell-muted">{product.sku}</td>
+                  <td className="cell-strong">{product.name}</td>
+                  <td className="num">{Number(product.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                  <td className={`num ${product.stock_quantity <= product.reorder_level ? "low-stock-value" : ""}`}>
+                    {product.stock_quantity}
+                  </td>
+                  <td className="num cell-muted">{product.reorder_level}</td>
                   <td className="customers-actions">
                     {isManager && (
                       <>
-                        <button onClick={() => openEditForm(product)}>Edit</button>
-                        <button onClick={() => handleDelete(product.id)}>Archive</button>
+                        <button className="btn-sm" onClick={() => openEditForm(product)}>Edit</button>
+                        <button className="btn-sm btn-danger" onClick={() => handleDelete(product.id)}>Archive</button>
                       </>
                     )}
                   </td>

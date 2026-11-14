@@ -1,5 +1,6 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
 import Markdown from "react-markdown";
+import { ArrowUp, Database, Sparkles } from "lucide-react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
 import { AppLayout } from "../components/AppLayout";
@@ -50,22 +51,32 @@ export function AssistantPage() {
   return (
     <AppLayout>
       <div className="assistant-page">
-        <h1>Ask your data</h1>
-        <p className="muted-text">
-          Ask a question in plain English. The assistant only answers from your company's real
-          data — it can't see or invent numbers it didn't look up.
-        </p>
+        <div className="assistant-hero">
+          <span className="assistant-hero-icon">
+            <Sparkles size={22} />
+          </span>
+          <div>
+            <h1>Ask your data</h1>
+            <p className="page-subtitle">
+              Plain-English questions, answered only from your company's real records - never
+              invented numbers.
+            </p>
+          </div>
+        </div>
 
         <form onSubmit={handleSubmit}>
           <textarea
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="e.g. What's my outstanding revenue?"
+            placeholder="Which customers haven't paid yet?"
             rows={3}
+            aria-label="Your question"
           />
-          <button type="submit" disabled={loading || !question.trim()}>
+          <span className="assistant-hint">Enter to ask - Shift+Enter for a new line</span>
+          <button type="submit" className="btn-primary" disabled={loading || !question.trim()}>
             {loading ? "Thinking..." : "Ask"}
+            {!loading && <ArrowUp size={16} />}
           </button>
         </form>
 
@@ -88,19 +99,31 @@ export function AssistantPage() {
 
         {error && <p className="form-error">{error}</p>}
 
+        {loading && (
+          <div className="assistant-thinking">
+            <span className="spinner" />
+            Looking through your data...
+          </div>
+        )}
+
         {result && (
           <div className="assistant-answer">
+            <div className="assistant-answer-head">
+              <Sparkles size={15} />
+              Answer
+            </div>
             {/* The model answers in Markdown; react-markdown never renders raw HTML. */}
             <div className="assistant-answer-body">
               <Markdown>{result.answer}</Markdown>
             </div>
             {result.tools_used.length > 0 && (
               <div className="assistant-tools-used">
-                <span className="muted-text">Data used:</span>
+                <Database size={14} className="muted-text" />
+                <span className="muted-text">Based on:</span>
                 <ul>
                   {result.tools_used.map((t, i) => (
-                    <li key={i}>
-                      <code>{t.tool}</code> — {t.summary}
+                    <li key={i} title={t.summary}>
+                      <code>{t.tool}</code> {t.summary}
                     </li>
                   ))}
                 </ul>
