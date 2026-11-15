@@ -30,13 +30,35 @@ export interface UserOut {
   is_active: boolean;
 }
 
+// Mirrors backend/app/schemas/company.py exactly.
+
+export interface UpdateCompany {
+  email?: string;
+  address?: string | null;
+  gstin?: string | null;
+  state_code?: string | null;
+}
+
+export interface CompanyOut {
+  id: string;
+  name: string;
+  email: string;
+  currency: string;
+  address: string | null;
+  gstin: string | null;
+  state_code: string | null;
+}
+
 // Mirrors backend/app/schemas/customer.py exactly.
+// state_code is a GST state code (see api/gst.ts).
 
 export interface CreateCustomer {
   name: string;
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  gstin?: string | null;
+  state_code?: string | null;
 }
 
 export interface UpdateCustomer {
@@ -44,6 +66,8 @@ export interface UpdateCustomer {
   email?: string | null;
   phone?: string | null;
   address?: string | null;
+  gstin?: string | null;
+  state_code?: string | null;
   is_active?: boolean;
 }
 
@@ -54,18 +78,22 @@ export interface CustomerOut {
   email: string | null;
   phone: string | null;
   address: string | null;
+  gstin: string | null;
+  state_code: string | null;
   is_active: boolean;
   created_at: string;
 }
 
 // Mirrors backend/app/schemas/product.py exactly.
-// unit_price is a Decimal, which FastAPI/Pydantic serializes as a string.
+// unit_price and gst_rate are Decimals, which FastAPI/Pydantic serializes as strings.
 
 export interface CreateProduct {
   sku: string;
   name: string;
   description?: string | null;
   unit_price: string;
+  hsn_code?: string | null;
+  gst_rate?: string | null;
   stock_quantity?: number;
   reorder_level?: number;
 }
@@ -75,6 +103,8 @@ export interface UpdateProduct {
   name?: string;
   description?: string | null;
   unit_price?: string;
+  hsn_code?: string | null;
+  gst_rate?: string | null;
   stock_quantity?: number;
   reorder_level?: number;
   is_active?: boolean;
@@ -87,6 +117,8 @@ export interface ProductOut {
   name: string;
   description: string | null;
   unit_price: string;
+  hsn_code: string | null;
+  gst_rate: string | null;
   stock_quantity: number;
   reorder_level: number;
   is_active: boolean;
@@ -95,7 +127,8 @@ export interface ProductOut {
 
 // Mirrors backend/app/schemas/invoice.py exactly.
 // Decimal fields (unit_price, line_total, subtotal, tax_percent, tax_amount,
-// total) are serialized as strings.
+// cgst/sgst/igst_amount, total) are serialized as strings.
+// An item's tax_percent of null means "use the invoice's tax_percent".
 
 export type InvoiceStatus = "DRAFT" | "SENT" | "PAID" | "CANCELLED";
 
@@ -104,6 +137,8 @@ export interface InvoiceItemInput {
   description?: string | null;
   quantity: number;
   unit_price?: string | null;
+  hsn_code?: string | null;
+  tax_percent?: string | null;
 }
 
 export interface CreateInvoice {
@@ -111,6 +146,7 @@ export interface CreateInvoice {
   issue_date: string;
   due_date: string;
   tax_percent?: string;
+  place_of_supply?: string | null;
   notes?: string | null;
   items: InvoiceItemInput[];
 }
@@ -120,6 +156,7 @@ export interface UpdateInvoice {
   issue_date?: string;
   due_date?: string;
   tax_percent?: string;
+  place_of_supply?: string | null;
   notes?: string | null;
   items?: InvoiceItemInput[];
 }
@@ -135,6 +172,9 @@ export interface InvoiceItemOut {
   quantity: number;
   unit_price: string;
   line_total: string;
+  hsn_code: string | null;
+  tax_percent: string | null;
+  tax_amount: string;
 }
 
 export interface InvoiceOut {
@@ -149,6 +189,10 @@ export interface InvoiceOut {
   subtotal: string;
   tax_percent: string;
   tax_amount: string;
+  place_of_supply: string | null;
+  cgst_amount: string;
+  sgst_amount: string;
+  igst_amount: string;
   total: string;
   notes: string | null;
   created_at: string;

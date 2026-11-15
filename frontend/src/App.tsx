@@ -10,6 +10,7 @@ import { ProductsPage } from "./pages/ProductsPage";
 import { InvoicesPage } from "./pages/InvoicesPage";
 import { InvoiceFormPage } from "./pages/InvoiceFormPage";
 import { InvoiceDetailPage } from "./pages/InvoiceDetailPage";
+import { SettingsPage } from "./pages/SettingsPage";
 import "./App.css";
 
 // Split out: the Markdown renderer it needs is the heaviest dependency in the app.
@@ -81,6 +82,14 @@ function App() {
         element={
           <ProtectedRoute>
             <InvoiceDetailPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
           </ProtectedRoute>
         }
       />

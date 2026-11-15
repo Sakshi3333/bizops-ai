@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { NavLink } from "react-router-dom";
-import { FileText, LayoutDashboard, LogOut, Package, Sparkles, Users } from "lucide-react";
+import { FileText, LayoutDashboard, LogOut, Package, Settings, Sparkles, Users } from "lucide-react";
 import { useAuth } from "../auth/AuthContext";
 import { Brand } from "./AuthShell";
 
@@ -41,6 +41,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <Sparkles size={18} />
             <span>AI assistant</span>
             <em className="nav-badge">AI</em>
+          </NavLink>
+          <NavLink to="/settings" title="Company settings">
+            <Settings size={18} />
+            <span>Settings</span>
           </NavLink>
         </nav>
 

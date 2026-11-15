@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Download, Pencil } from "lucide-react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
+import { formatRate, stateName } from "../api/gst";
 import { AppLayout } from "../components/AppLayout";
 import { useAuth } from "../auth/AuthContext";
 import { StatusBadge } from "../components/StatusBadge";
@@ -83,6 +84,12 @@ export function InvoiceDetailPage() {
     }
   }
 
+  // Invoices from a company without a GSTIN (and any issued before GST support)
+  // carry no split, just one tax amount.
+  const hasGstSplit =
+    invoice !== null && (Number(invoice.igst_amount) > 0 || Number(invoice.cgst_amount) > 0);
+  const taxLabel = hasGstSplit ? "GST" : "Tax";
+
   return (
     <AppLayout>
       <div className="invoice-detail-page">
@@ -111,6 +118,18 @@ export function InvoiceDetailPage() {
                 <dt>Customer</dt>
                 <dd>{customer?.name ?? invoice.customer_id}</dd>
               </div>
+              {customer?.gstin && (
+                <div>
+                  <dt>Customer GSTIN</dt>
+                  <dd className="mono">{customer.gstin}</dd>
+                </div>
+              )}
+              {invoice.place_of_supply && (
+                <div>
+                  <dt>Place of supply</dt>
+                  <dd>{stateName(invoice.place_of_supply)}</dd>
+                </div>
+              )}
               <div>
                 <dt>Issue date</dt>
                 <dd>{invoice.issue_date}</dd>
@@ -137,28 +156,50 @@ export function InvoiceDetailPage() {
               <thead>
                 <tr>
                   <th>Description</th>
+                  <th>HSN/SAC</th>
                   <th className="num">Unit price</th>
                   <th className="num">Qty</th>
-                  <th className="num">Line total</th>
+                  <th className="num">Taxable value</th>
+                  <th className="num">{taxLabel} %</th>
+                  <th className="num">{taxLabel}</th>
                 </tr>
               </thead>
               <tbody>
                 {invoice.items.map((item) => (
                   <tr key={item.id}>
                     <td>{item.description}</td>
+                    <td className="mono cell-muted">{item.hsn_code ?? "—"}</td>
                     <td className="num">{item.unit_price}</td>
                     <td className="num">{item.quantity}</td>
                     <td className="num cell-strong">{item.line_total}</td>
+                    <td className="num">{formatRate(item.tax_percent ?? invoice.tax_percent)}%</td>
+                    <td className="num">{item.tax_amount}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
 
             <dl className="invoice-totals">
-              <dt>Subtotal</dt>
+              <dt>{hasGstSplit ? "Taxable value" : "Subtotal"}</dt>
               <dd>{invoice.subtotal}</dd>
-              <dt>Tax ({invoice.tax_percent}%)</dt>
-              <dd>{invoice.tax_amount}</dd>
+              {Number(invoice.igst_amount) > 0 ? (
+                <>
+                  <dt>IGST</dt>
+                  <dd>{invoice.igst_amount}</dd>
+                </>
+              ) : Number(invoice.cgst_amount) > 0 ? (
+                <>
+                  <dt>CGST</dt>
+                  <dd>{invoice.cgst_amount}</dd>
+                  <dt>SGST</dt>
+                  <dd>{invoice.sgst_amount}</dd>
+                </>
+              ) : (
+                <>
+                  <dt>Tax</dt>
+                  <dd>{invoice.tax_amount}</dd>
+                </>
+              )}
               <dt className="grand-total">Total</dt>
               <dd className="grand-total">{invoice.total}</dd>
             </dl>

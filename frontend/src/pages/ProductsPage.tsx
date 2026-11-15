@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
+import { formatRate } from "../api/gst";
 import { AppLayout } from "../components/AppLayout";
 import { useAuth } from "../auth/AuthContext";
 import type { CreateProduct, ProductOut, UpdateProduct } from "../api/types";
@@ -11,6 +12,8 @@ interface ProductFormState {
   name: string;
   description: string;
   unit_price: string;
+  hsn_code: string;
+  gst_rate: string;
   stock_quantity: string;
   reorder_level: string;
 }
@@ -20,6 +23,8 @@ const emptyForm: ProductFormState = {
   name: "",
   description: "",
   unit_price: "",
+  hsn_code: "",
+  gst_rate: "",
   stock_quantity: "0",
   reorder_level: "0",
 };
@@ -63,6 +68,8 @@ export function ProductsPage() {
       name: product.name,
       description: product.description ?? "",
       unit_price: product.unit_price,
+      hsn_code: product.hsn_code ?? "",
+      gst_rate: product.gst_rate === null ? "" : formatRate(product.gst_rate),
       stock_quantity: String(product.stock_quantity),
       reorder_level: String(product.reorder_level),
     });
@@ -87,6 +94,8 @@ export function ProductsPage() {
           name: form.name,
           description: form.description || null,
           unit_price: form.unit_price,
+          hsn_code: form.hsn_code.trim() || null,
+          gst_rate: form.gst_rate === "" ? null : form.gst_rate,
           stock_quantity: Number(form.stock_quantity) || 0,
           reorder_level: Number(form.reorder_level) || 0,
         };
@@ -97,6 +106,8 @@ export function ProductsPage() {
           name: form.name,
           description: form.description || null,
           unit_price: form.unit_price,
+          hsn_code: form.hsn_code.trim() || null,
+          gst_rate: form.gst_rate === "" ? null : form.gst_rate,
           stock_quantity: Number(form.stock_quantity) || 0,
           reorder_level: Number(form.reorder_level) || 0,
         };
@@ -171,6 +182,30 @@ export function ProductsPage() {
               />
             </label>
             <label>
+              HSN / SAC code
+              <input
+                className="mono"
+                inputMode="numeric"
+                pattern="[0-9]{4,8}"
+                title="4 to 8 digits"
+                value={form.hsn_code}
+                onChange={(e) => setForm((f) => ({ ...f, hsn_code: e.target.value }))}
+                placeholder="Optional"
+              />
+            </label>
+            <label>
+              GST %
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={form.gst_rate}
+                onChange={(e) => setForm((f) => ({ ...f, gst_rate: e.target.value }))}
+                placeholder="Uses the invoice's default if empty"
+              />
+            </label>
+            <label>
               Stock quantity
               <input
                 type="number"
@@ -216,6 +251,8 @@ export function ProductsPage() {
               <tr>
                 <th>SKU</th>
                 <th>Name</th>
+                <th>HSN/SAC</th>
+                <th className="num">GST %</th>
                 <th className="num">Unit price</th>
                 <th className="num">Stock</th>
                 <th className="num">Reorder level</th>
@@ -225,13 +262,15 @@ export function ProductsPage() {
             <tbody>
               {products.length === 0 && (
                 <tr>
-                  <td colSpan={6}>No products yet.</td>
+                  <td colSpan={8}>No products yet.</td>
                 </tr>
               )}
               {products.map((product) => (
                 <tr key={product.id}>
                   <td className="mono cell-muted">{product.sku}</td>
                   <td className="cell-strong">{product.name}</td>
+                  <td className="mono cell-muted">{product.hsn_code ?? "—"}</td>
+                  <td className="num">{product.gst_rate === null ? "—" : `${formatRate(product.gst_rate)}%`}</td>
                   <td className="num">{Number(product.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                   <td className={`num ${product.stock_quantity <= product.reorder_level ? "low-stock-value" : ""}`}>
                     {product.stock_quantity}

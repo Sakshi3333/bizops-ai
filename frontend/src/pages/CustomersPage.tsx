@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Plus } from "lucide-react";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
+import { stateFromGstin, stateName } from "../api/gst";
 import { AppLayout } from "../components/AppLayout";
+import { StateSelect } from "../components/StateSelect";
 import { useAuth } from "../auth/AuthContext";
 import type { CreateCustomer, CustomerOut, UpdateCustomer } from "../api/types";
 
@@ -11,9 +13,11 @@ interface CustomerFormState {
   email: string;
   phone: string;
   address: string;
+  gstin: string;
+  stateCode: string;
 }
 
-const emptyForm: CustomerFormState = { name: "", email: "", phone: "", address: "" };
+const emptyForm: CustomerFormState = { name: "", email: "", phone: "", address: "", gstin: "", stateCode: "" };
 
 export function CustomersPage() {
   const { isManager } = useAuth();
@@ -54,6 +58,8 @@ export function CustomersPage() {
       email: customer.email ?? "",
       phone: customer.phone ?? "",
       address: customer.address ?? "",
+      gstin: customer.gstin ?? "",
+      stateCode: customer.state_code ?? "",
     });
     setFormError(null);
     setFormOpen(true);
@@ -76,6 +82,8 @@ export function CustomersPage() {
           email: form.email || null,
           phone: form.phone || null,
           address: form.address || null,
+          gstin: form.gstin.trim() || null,
+          state_code: form.stateCode || null,
         };
         await apiClient.patch(`/customers/${editingId}`, body);
       } else {
@@ -84,6 +92,8 @@ export function CustomersPage() {
           email: form.email || null,
           phone: form.phone || null,
           address: form.address || null,
+          gstin: form.gstin.trim() || null,
+          state_code: form.stateCode || null,
         };
         await apiClient.post("/customers", body);
       }
@@ -151,6 +161,29 @@ export function CustomersPage() {
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
               />
             </label>
+            <label>
+              GSTIN
+              <input
+                className="mono"
+                value={form.gstin}
+                onChange={(e) => {
+                  const gstin = e.target.value.toUpperCase();
+                  // A GSTIN's first two digits are its state, so keep the two in step.
+                  setForm((f) => ({ ...f, gstin, stateCode: stateFromGstin(gstin) ?? f.stateCode }));
+                }}
+                placeholder="Optional - for GST-registered customers"
+                maxLength={15}
+              />
+            </label>
+            <label>
+              State
+              <StateSelect
+                value={form.stateCode}
+                onChange={(stateCode) => setForm((f) => ({ ...f, stateCode }))}
+                disabled={Boolean(form.gstin)}
+              />
+              <span className="field-hint">Decides CGST + SGST or IGST on this customer's invoices.</span>
+            </label>
             {formError && <p className="form-error">{formError}</p>}
             <div className="customer-form-actions">
               <button type="submit" className="btn-primary" disabled={submitting}>
@@ -179,13 +212,14 @@ export function CustomersPage() {
                 <th>Email</th>
                 <th>Phone</th>
                 <th>Address</th>
+                <th>State / GSTIN</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               {customers.length === 0 && (
                 <tr>
-                  <td colSpan={5}>No customers yet.</td>
+                  <td colSpan={6}>No customers yet.</td>
                 </tr>
               )}
               {customers.map((customer) => (
@@ -194,6 +228,10 @@ export function CustomersPage() {
                   <td>{customer.email ?? "—"}</td>
                   <td>{customer.phone ?? "—"}</td>
                   <td>{customer.address ?? "—"}</td>
+                  <td>
+                    {stateName(customer.state_code) ?? "—"}
+                    {customer.gstin && <div className="mono cell-muted">{customer.gstin}</div>}
+                  </td>
                   <td className="customers-actions">
                     <button className="btn-sm" onClick={() => openEditForm(customer)}>Edit</button>
                     {isManager && (

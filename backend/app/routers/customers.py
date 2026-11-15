@@ -9,6 +9,7 @@ from app.core.deps import get_current_user, require_manager
 from app.models.customer import Customer
 from app.models.user import User
 from app.schemas.customer import CreateCustomer, CustomerOut, UpdateCustomer
+from app.services.gst import merge_gst_identity
 
 router = APIRouter(prefix="/customers", tags=["customers"])
 
@@ -18,6 +19,16 @@ def _get_customer_or_404(customer_id: uuid.UUID, db: Session) -> Customer:
     if customer is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Customer not found")
     return customer
+
+
+def _apply_changes(customer: Customer, changes: dict) -> None:
+    try:
+        gstin, state_code = merge_gst_identity(customer.gstin, customer.state_code, changes)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    for field, value in changes.items():
+        setattr(customer, field, value)
+    customer.gstin, customer.state_code = gstin, state_code
 
 
 @router.get("", response_model=list[CustomerOut])
@@ -38,7 +49,8 @@ def create_customer(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Customer:
-    customer = Customer(company_id=current_user.company_id, **payload.model_dump())
+    customer = Customer(company_id=current_user.company_id)
+    _apply_changes(customer, payload.model_dump())
     db.add(customer)
     db.commit()
     db.refresh(customer)
@@ -62,8 +74,7 @@ def update_customer(
     db: Session = Depends(get_db),
 ) -> Customer:
     customer = _get_customer_or_404(customer_id, db)
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(customer, field, value)
+    _apply_changes(customer, payload.model_dump(exclude_unset=True))
     db.commit()
     db.refresh(customer)
     return customer

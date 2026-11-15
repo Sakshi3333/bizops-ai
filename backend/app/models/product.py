@@ -20,6 +20,9 @@ class Product(Base, UUIDPkMixin, TimestampMixin):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    hsn_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # NULL = no rate of its own; invoice lines fall back to the invoice's default GST %.
+    gst_rate: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
     stock_quantity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     reorder_level: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))

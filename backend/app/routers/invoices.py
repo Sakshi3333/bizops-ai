@@ -21,6 +21,7 @@ from app.schemas.invoice import (
     UpdateInvoice,
 )
 from app.services.invoice_pdf import render_invoice_pdf
+from app.services.invoice_tax import apply_tax
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 
@@ -59,9 +60,12 @@ def _next_invoice_number(issue_date: date, db: Session) -> str:
     return f"{prefix}{seq:04d}"
 
 
-def _build_items(item_inputs: list[InvoiceItemInput], db: Session) -> tuple[list[InvoiceItem], Decimal]:
+def _get_company(user: User, db: Session) -> Company:
+    return db.scalar(select(Company).where(Company.id == user.company_id))
+
+
+def _build_items(item_inputs: list[InvoiceItemInput], db: Session) -> list[InvoiceItem]:
     items: list[InvoiceItem] = []
-    subtotal = Decimal("0")
     for item_input in item_inputs:
         if item_input.product_id is not None:
             product = db.scalar(select(Product).where(Product.id == item_input.product_id))
@@ -71,9 +75,15 @@ def _build_items(item_inputs: list[InvoiceItemInput], db: Session) -> tuple[list
                 raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Product '{product.name}' is archived")
             description = product.name
             unit_price = product.unit_price
+            hsn_code = item_input.hsn_code or product.hsn_code
+            tax_percent = (
+                item_input.tax_percent if item_input.tax_percent is not None else product.gst_rate
+            )
         else:
             description = item_input.description
             unit_price = item_input.unit_price
+            hsn_code = item_input.hsn_code
+            tax_percent = item_input.tax_percent
 
         line_total = (unit_price * item_input.quantity).quantize(Decimal("0.01"))
         items.append(
@@ -83,15 +93,11 @@ def _build_items(item_inputs: list[InvoiceItemInput], db: Session) -> tuple[list
                 quantity=item_input.quantity,
                 unit_price=unit_price,
                 line_total=line_total,
+                hsn_code=hsn_code,
+                tax_percent=tax_percent,
             )
         )
-        subtotal += line_total
-    return items, subtotal
-
-
-def _recompute_totals(invoice: Invoice) -> None:
-    invoice.tax_amount = (invoice.subtotal * invoice.tax_percent / Decimal("100")).quantize(Decimal("0.01"))
-    invoice.total = invoice.subtotal + invoice.tax_amount
+    return items
 
 
 def _require_draft(invoice: Invoice) -> None:
@@ -115,9 +121,8 @@ def create_invoice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Invoice:
-    _get_active_customer_or_error(payload.customer_id, db)
-
-    items, subtotal = _build_items(payload.items, db)
+    customer = _get_active_customer_or_error(payload.customer_id, db)
+    company = _get_company(current_user, db)
 
     invoice = Invoice(
         company_id=current_user.company_id,
@@ -126,12 +131,12 @@ def create_invoice(
         status=InvoiceStatus.DRAFT,
         issue_date=payload.issue_date,
         due_date=payload.due_date,
-        subtotal=subtotal,
         tax_percent=payload.tax_percent,
+        place_of_supply=payload.place_of_supply or customer.state_code or company.state_code,
         notes=payload.notes,
-        items=items,
+        items=_build_items(payload.items, db),
     )
-    _recompute_totals(invoice)
+    apply_tax(invoice, company)
 
     db.add(invoice)
     db.commit()
@@ -175,9 +180,18 @@ def update_invoice(
     invoice = _get_invoice_or_404(invoice_id, db)
     _require_draft(invoice)
 
+    company = _get_company(current_user, db)
+
+    customer_changed = payload.customer_id is not None and payload.customer_id != invoice.customer_id
     if payload.customer_id is not None:
         _get_active_customer_or_error(payload.customer_id, db)
         invoice.customer_id = payload.customer_id
+    # Place of supply follows the customer unless it is set explicitly.
+    if payload.place_of_supply is not None:
+        invoice.place_of_supply = payload.place_of_supply
+    elif customer_changed or "place_of_supply" in payload.model_fields_set:
+        customer = db.scalar(select(Customer).where(Customer.id == invoice.customer_id))
+        invoice.place_of_supply = customer.state_code or company.state_code
     if payload.issue_date is not None:
         invoice.issue_date = payload.issue_date
     if payload.due_date is not None:
@@ -188,12 +202,11 @@ def update_invoice(
         invoice.notes = payload.notes
 
     if payload.items is not None:
-        items, subtotal = _build_items(payload.items, db)
+        items = _build_items(payload.items, db)
         invoice.items.clear()
         invoice.items.extend(items)
-        invoice.subtotal = subtotal
 
-    _recompute_totals(invoice)
+    apply_tax(invoice, company)
 
     db.commit()
     db.refresh(invoice)
@@ -221,6 +234,9 @@ def change_invoice_status(
         )
 
     if invoice.status == InvoiceStatus.DRAFT and payload.status == InvoiceStatus.SENT:
+        # Tax is frozen from here on, so settle it against the company's current
+        # GST registration (it may have changed since the draft was last saved).
+        apply_tax(invoice, _get_company(current_user, db))
         for item in invoice.items:
             if item.product_id is None:
                 continue

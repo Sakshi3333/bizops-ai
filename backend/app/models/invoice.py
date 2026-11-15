@@ -41,6 +41,12 @@ class Invoice(Base, UUIDPkMixin, TimestampMixin):
     tax_percent: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False, server_default="0")
     tax_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, server_default="0")
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, server_default="0")
+    # GST: tax_percent above is the default rate for lines without their own;
+    # tax_amount is always cgst + sgst + igst when the company is GST-registered.
+    place_of_supply: Mapped[str | None] = mapped_column(String(2), nullable=True)
+    cgst_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, server_default="0")
+    sgst_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, server_default="0")
+    igst_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, server_default="0")
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     items: Mapped[list["InvoiceItem"]] = relationship(
@@ -67,5 +73,9 @@ class InvoiceItem(Base, UUIDPkMixin):
     quantity: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     line_total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
+    hsn_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # NULL = use the invoice's tax_percent.
+    tax_percent: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False, server_default="0")
 
     invoice: Mapped["Invoice"] = relationship(back_populates="items")

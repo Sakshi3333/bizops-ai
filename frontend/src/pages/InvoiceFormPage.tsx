@@ -2,8 +2,11 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiClient } from "../api/client";
 import { extractErrorMessage } from "../api/errors";
+import { formatRate } from "../api/gst";
 import { AppLayout } from "../components/AppLayout";
+import { StateSelect } from "../components/StateSelect";
 import type {
+  CompanyOut,
   CreateInvoice,
   CustomerOut,
   InvoiceItemInput,
@@ -18,6 +21,8 @@ interface LineItemFormState {
   description: string;
   unitPrice: string;
   quantity: string;
+  hsnCode: string;
+  taxPercent: string; // "" => use the invoice's default rate
 }
 
 let keyCounter = 0;
@@ -27,11 +32,23 @@ function newKey(): string {
 }
 
 function emptyLineItem(): LineItemFormState {
-  return { key: newKey(), productId: "", description: "", unitPrice: "", quantity: "1" };
+  return {
+    key: newKey(),
+    productId: "",
+    description: "",
+    unitPrice: "",
+    quantity: "1",
+    hsnCode: "",
+    taxPercent: "",
+  };
 }
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function round2(value: number): number {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
 }
 
 function plusDaysIso(days: number): string {
@@ -47,11 +64,13 @@ export function InvoiceFormPage() {
 
   const [customers, setCustomers] = useState<CustomerOut[]>([]);
   const [products, setProducts] = useState<ProductOut[]>([]);
+  const [company, setCompany] = useState<CompanyOut | null>(null);
 
   const [customerId, setCustomerId] = useState("");
   const [issueDate, setIssueDate] = useState(todayIso());
   const [dueDate, setDueDate] = useState(plusDaysIso(30));
   const [taxPercent, setTaxPercent] = useState("0");
+  const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItemFormState[]>([emptyLineItem()]);
 
@@ -64,9 +83,11 @@ export function InvoiceFormPage() {
     Promise.all([
       apiClient.get<CustomerOut[]>("/customers"),
       apiClient.get<ProductOut[]>("/products"),
-    ]).then(([customersRes, productsRes]) => {
+      apiClient.get<CompanyOut>("/company"),
+    ]).then(([customersRes, productsRes, companyRes]) => {
       setCustomers(customersRes.data);
       setProducts(productsRes.data);
+      setCompany(companyRes.data);
     });
   }, []);
 
@@ -83,6 +104,7 @@ export function InvoiceFormPage() {
         setIssueDate(data.issue_date);
         setDueDate(data.due_date);
         setTaxPercent(data.tax_percent);
+        setPlaceOfSupply(data.place_of_supply ?? "");
         setNotes(data.notes ?? "");
         setItems(
           data.items.map((item) => ({
@@ -91,6 +113,8 @@ export function InvoiceFormPage() {
             description: item.description,
             unitPrice: item.unit_price,
             quantity: String(item.quantity),
+            hsnCode: item.hsn_code ?? "",
+            taxPercent: item.tax_percent === null ? "" : formatRate(item.tax_percent),
           })),
         );
       })
@@ -104,7 +128,7 @@ export function InvoiceFormPage() {
 
   function handleProductChange(key: string, productId: string) {
     if (productId === "") {
-      updateItem(key, { productId: "", description: "", unitPrice: "" });
+      updateItem(key, { productId: "", description: "", unitPrice: "", hsnCode: "", taxPercent: "" });
       return;
     }
     const product = products.find((p) => p.id === productId);
@@ -112,7 +136,17 @@ export function InvoiceFormPage() {
       productId,
       description: product?.name ?? "",
       unitPrice: product?.unit_price ?? "",
+      hsnCode: product?.hsn_code ?? "",
+      taxPercent: product?.gst_rate ? formatRate(product.gst_rate) : "",
     });
+  }
+
+  // Place of supply follows the customer's state (as the backend defaults it)
+  // until the user picks another.
+  function handleCustomerChange(nextCustomerId: string) {
+    setCustomerId(nextCustomerId);
+    const customer = customers.find((c) => c.id === nextCustomerId);
+    setPlaceOfSupply(customer?.state_code ?? company?.state_code ?? "");
   }
 
   function addItem() {
@@ -129,8 +163,27 @@ export function InvoiceFormPage() {
     [items],
   );
   const subtotal = useMemo(() => lineTotals.reduce((sum, v) => sum + v, 0), [lineTotals]);
-  const taxAmount = useMemo(() => subtotal * ((Number(taxPercent) || 0) / 100), [subtotal, taxPercent]);
-  const total = subtotal + taxAmount;
+
+  // A preview of apply_tax in backend/app/services/invoice_tax.py; the saved
+  // invoice always carries the server's figures.
+  const registered = Boolean(company?.gstin);
+  const interstate = registered && placeOfSupply !== "" && placeOfSupply !== company?.state_code;
+  const tax = useMemo(() => {
+    let cgst = 0;
+    let igst = 0;
+    let plain = 0;
+    items.forEach((item, index) => {
+      const productRate = products.find((p) => p.id === item.productId)?.gst_rate;
+      const rate = Number(item.taxPercent !== "" ? item.taxPercent : (productRate ?? taxPercent)) || 0;
+      const taxable = round2(lineTotals[index]);
+      if (!registered) plain += round2((taxable * rate) / 100);
+      else if (interstate) igst += round2((taxable * rate) / 100);
+      else cgst += round2((taxable * rate) / 200);
+    });
+    return { cgst, igst, total: registered ? (interstate ? igst : cgst * 2) : plain };
+  }, [items, products, lineTotals, taxPercent, registered, interstate]);
+  const total = subtotal + tax.total;
+  const taxLabel = registered ? "GST" : "Tax";
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -142,6 +195,8 @@ export function InvoiceFormPage() {
         description: item.productId ? null : item.description,
         quantity: Number(item.quantity) || 1,
         unit_price: item.productId ? null : item.unitPrice,
+        hsn_code: item.hsnCode.trim() || null,
+        tax_percent: item.taxPercent === "" ? null : item.taxPercent,
       }));
 
       if (isEdit && id) {
@@ -150,6 +205,7 @@ export function InvoiceFormPage() {
           issue_date: issueDate,
           due_date: dueDate,
           tax_percent: taxPercent,
+          place_of_supply: placeOfSupply || null,
           notes: notes || null,
           items: itemsPayload,
         };
@@ -161,6 +217,7 @@ export function InvoiceFormPage() {
           issue_date: issueDate,
           due_date: dueDate,
           tax_percent: taxPercent,
+          place_of_supply: placeOfSupply || null,
           notes: notes || null,
           items: itemsPayload,
         };
@@ -206,7 +263,7 @@ export function InvoiceFormPage() {
           <div className="invoice-form-fields">
             <label>
               Customer
-              <select value={customerId} onChange={(e) => setCustomerId(e.target.value)} required>
+              <select value={customerId} onChange={(e) => handleCustomerChange(e.target.value)} required>
                 <option value="" disabled>
                   Select a customer
                 </option>
@@ -218,15 +275,15 @@ export function InvoiceFormPage() {
               </select>
             </label>
             <label>
-              Tax %
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={taxPercent}
-                onChange={(e) => setTaxPercent(e.target.value)}
-              />
+              Place of supply
+              <StateSelect value={placeOfSupply} onChange={setPlaceOfSupply} />
+              {registered && placeOfSupply !== "" && (
+                <span className="field-hint">
+                  {interstate
+                    ? "Outside your state, so IGST applies."
+                    : "Within your state, so GST splits into CGST + SGST."}
+                </span>
+              )}
             </label>
             <label>
               Issue date
@@ -241,6 +298,18 @@ export function InvoiceFormPage() {
               Due date
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} required />
             </label>
+            <label>
+              Default {taxLabel} %
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                max="100"
+                value={taxPercent}
+                onChange={(e) => setTaxPercent(e.target.value)}
+              />
+              <span className="field-hint">Used for any line that has no rate of its own.</span>
+            </label>
           </div>
 
           <label>
@@ -253,8 +322,10 @@ export function InvoiceFormPage() {
               <tr>
                 <th>Product</th>
                 <th>Description</th>
+                <th>HSN/SAC</th>
                 <th>Unit price</th>
                 <th>Qty</th>
+                <th>{taxLabel} %</th>
                 <th>Line total</th>
                 <th></th>
               </tr>
@@ -285,6 +356,16 @@ export function InvoiceFormPage() {
                   </td>
                   <td>
                     <input
+                      className="input-narrow mono"
+                      inputMode="numeric"
+                      pattern="[0-9]{4,8}"
+                      title="4 to 8 digits"
+                      value={item.hsnCode}
+                      onChange={(e) => updateItem(item.key, { hsnCode: e.target.value })}
+                    />
+                  </td>
+                  <td>
+                    <input
                       type="number"
                       step="0.01"
                       min="0"
@@ -304,6 +385,18 @@ export function InvoiceFormPage() {
                       required
                     />
                   </td>
+                  <td>
+                    <input
+                      className="input-narrow"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={item.taxPercent}
+                      placeholder={formatRate(taxPercent)}
+                      onChange={(e) => updateItem(item.key, { taxPercent: e.target.value })}
+                    />
+                  </td>
                   <td>{lineTotals[index].toFixed(2)}</td>
                   <td>
                     <button type="button" className="btn-sm btn-ghost" onClick={() => removeItem(item.key)}>
@@ -319,10 +412,26 @@ export function InvoiceFormPage() {
           </button>
 
           <dl className="invoice-totals">
-            <dt>Subtotal</dt>
+            <dt>{registered ? "Taxable value" : "Subtotal"}</dt>
             <dd>{subtotal.toFixed(2)}</dd>
-            <dt>Tax</dt>
-            <dd>{taxAmount.toFixed(2)}</dd>
+            {!registered ? (
+              <>
+                <dt>Tax</dt>
+                <dd>{tax.total.toFixed(2)}</dd>
+              </>
+            ) : interstate ? (
+              <>
+                <dt>IGST</dt>
+                <dd>{tax.igst.toFixed(2)}</dd>
+              </>
+            ) : (
+              <>
+                <dt>CGST</dt>
+                <dd>{tax.cgst.toFixed(2)}</dd>
+                <dt>SGST</dt>
+                <dd>{tax.cgst.toFixed(2)}</dd>
+              </>
+            )}
             <dt className="grand-total">Total</dt>
             <dd className="grand-total">{total.toFixed(2)}</dd>
           </dl>
